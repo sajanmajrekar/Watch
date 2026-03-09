@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Watch Banner Generator</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+
+<body>
+    <div class="background-animation"></div>
+
+    <main class="container">
+        <header>
+            <h1>Art Director AI</h1>
+            <p>Automated Watch Banner Generation Pipeline</p>
+        </header>
+
+        <section class="input-section glass-panel">
+            <form id="generate-form">
+                <div class="input-group">
+                    <input type="url" id="blog-url" placeholder="Paste watch blog URL here..." required>
+                    <button type="submit" id="generate-btn">
+                        <span class="btn-text">Generate Banners</span>
+                        <div class="loader-spinner" id="btn-loader" style="display: none;"></div>
+                    </button>
+                </div>
+            </form>
+        </section>
+
+        <section class="status-section glass-panel" id="status-container" style="display: none;">
+            <div class="progress-bar-container">
+                <div class="progress-bar" id="progress-bar"></div>
+            </div>
+            <p id="status-text">Initializing pipeline...</p>
+        </section>
+
+        <section class="results-section" id="results-container" style="display: none;">
+
+            <div class="glass-panel review-card">
+                <h2>Art Direction by Azaan Kale</h2>
+                <div class="review-grid">
+                    <div class="review-stat">
+                        <span class="stat-label">Subject</span>
+                        <span class="stat-value" id="res-watch"></span>
+                    </div>
+                    <div class="review-stat">
+                        <span class="stat-label">Final Grade</span>
+                        <span class="stat-value highlight" id="res-score"></span>
+                    </div>
+                </div>
+
+                <div class="concept-block">
+                    <h3>Creative Direction</h3>
+                    <p id="res-cd"></p>
+                </div>
+                <div class="concept-block">
+                    <h3>Visual Treatment</h3>
+                    <p id="res-vt"></p>
+                </div>
+                <div class="concept-block">
+                    <h3>Framing & Composition</h3>
+                    <p id="res-fc"></p>
+                </div>
+                <div class="concept-block prompt-block">
+                    <h3>Technical AI Prompt (Nano Banana)</h3>
+                    <p id="res-prompt" class="tech-prompt"></p>
+                </div>
+                <div class="concept-block">
+                    <h3>Why It Works</h3>
+                    <p id="res-why"></p>
+                </div>
+
+                <div class="feedback-block">
+                    <h3>Post-Production Feedback</h3>
+                    <p id="res-feedback"></p>
+                </div>
+            </div>
+
+            <div class="glass-panel image-card">
+                <div class="image-header">
+                    <h2>Hero Banner</h2>
+                    <span class="badge">4877 x 1214</span>
+                </div>
+                <img id="res-img-hero" src="" alt="Hero Banner">
+                <div class="input-group">
+                    <button id="compare-btn-hero" type="button" style="flex:1;">Compare Original</button>
+                    <a id="download-hero" href="" download class="download-btn"
+                        style="flex:1; display:flex; align-items:center; justify-content:center;">Download Hero</a>
+                </div>
+            </div>
+
+            <div class="glass-panel image-card">
+                <div class="image-header">
+                    <h2>Thumbnail Card</h2>
+                    <span class="badge">600 x 548</span>
+                </div>
+                <img id="res-img-thumb" src="" alt="Thumbnail Banner">
+                <div class="input-group">
+                    <button id="compare-btn-thumb" type="button" style="flex:1;">Compare Original</button>
+                    <a id="download-thumb" href="" download class="download-btn"
+                        style="flex:1; display:flex; align-items:center; justify-content:center;">Download Thumbnail</a>
+                </div>
+            </div>
+
+        </section>
+    </main>
+
+    <!-- Compare Overlay (Side-by-Side with Zoom) -->
+    <div id="compare-overlay" class="compare-overlay">
+        <div class="compare-header">
+            <h2>Original vs AI Composite</h2>
+            <button id="close-compare" class="compare-close-btn">&times;</button>
+        </div>
+        <div class="compare-panels">
+            <div class="compare-tile">
+                <div class="compare-tile-header">
+                    <h3>Original Scraped Watch</h3>
+                    <div class="zoom-controls">
+                        <button class="zoom-btn" data-target="compare-source" data-action="out">−</button>
+                        <span class="zoom-level" id="zoom-level-source">100%</span>
+                        <button class="zoom-btn" data-target="compare-source" data-action="in">+</button>
+                    </div>
+                </div>
+                <div class="compare-img-container" id="container-source">
+                    <img id="compare-source" src="" alt="Original Watch">
+                </div>
+            </div>
+            <div class="compare-tile">
+                <div class="compare-tile-header">
+                    <h3>AI Composite (0% Distortion)</h3>
+                    <div class="zoom-controls">
+                        <button class="zoom-btn" data-target="compare-result" data-action="out">−</button>
+                        <span class="zoom-level" id="zoom-level-result">100%</span>
+                        <button class="zoom-btn" data-target="compare-result" data-action="in">+</button>
+                    </div>
+                </div>
+                <div class="compare-img-container" id="container-result">
+                    <img id="compare-result" src="" alt="AI Composite">
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="/static/script.js"></script>
+</body>
+
+</html>
