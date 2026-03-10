@@ -59,7 +59,7 @@ Premium highlight roll-off: bright areas must fade softly, never clip harshly.
 Clean lighting, low noise, high-end photography vibe.
 "Luxury" is restraint: use minimal props. A wooden podium, a marble slab, a leather desk pad, or abstract geometric pedestals are all great. Do NOT use messy or cluttered scenes.
 THE ENTIRE WATCH MUST ALWAYS BE 100% VISIBLE — from crown to bracelet clasp, top lug to bottom lug. NEVER crop or cut any part of the watch.
-The watch MUST occupy AT MOST 30% of the vertical frame height, leaving massive empty padding above and below. This is critical for 4:1 banner cropping.
+The watch MUST occupy AT MOST 20-25% of the vertical frame height, leaving massive empty padding above and below. This is critical for 4:1 banner cropping.
 PRESERVE THE EXACT WATCH DIAL, LOGOS, AND HANDS. Do not allow the AI to hallucinate or misspell the branding.
 
 Output Format
@@ -142,7 +142,7 @@ Return the 5-part brief and include ONE final Technical AI Prompt that explicitl
 "Cinematic macro shot of this exact same watch resting on..." (describe the surface/environment)
 "16:9 banner format"
 "Watch positioned on the [LEFT/RIGHT/CENTER], horizontal safe zone on the opposite side." 
-"CRITICAL: The watch must only take up 25-30% of the vertical height of the image. Leave massive empty headroom above and below the watch so it can be extreme-cropped into a 4:1 ultra-wide banner."
+"CRITICAL: The watch must only take up 20-25% of the vertical height of the image. Leave massive empty headroom above and below the watch so it can be extreme-cropped into a 4:1 ultra-wide banner."
 "THE ENTIRE WATCH MUST BE 100% VISIBLE FROM TOP TO BOTTOM AND LEFT TO RIGHT. DO NOT CROP, CUT, OR CLIP ANY PART OF THE WATCH — including the crown, lugs, bracelet links, and clasp. Show the complete watch with generous space around it."
 "NO TEXT, NO LOGOS, NO WATERMARKS in the background."
 "MAINTAIN 100% PERFECT ACCURACY ON THE WATCH DIAL, KEEPING ALL LOGOS, TEXT, HANDS, AND MARKERS EXACTLY AS IN THE REFERENCE IMAGE."

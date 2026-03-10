@@ -19,7 +19,11 @@ def search_and_download_watch_image(search_query, output_filename="sourced_watch
     # Try DuckDuckGo with retries
     for attempt in range(3):
         try:
-            from duckduckgo_search import DDGS
+            try:
+                from ddgs import DDGS
+            except ImportError:
+                from duckduckgo_search import DDGS
+            
             results = DDGS().images(
                 keywords=search_query,
                 region="wt-wt",

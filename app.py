@@ -7,10 +7,10 @@ import time
 from threading import Thread
 from queue import Queue
 from flask import Flask, request, jsonify, render_template, Response, send_from_directory
-from scraper import scrape_blog_content
-from llm import extract_watch_info, art_director_concept, art_director_review
-from image_search import search_and_download_watch_image
-from image_processor import generate_integrated_image, crop_and_resize, scale_and_pad
+from services.scraper import scrape_blog_content
+from services.llm import extract_watch_info, art_director_concept, art_director_review
+from services.image_search import search_and_download_watch_image
+from services.image_processor import generate_integrated_image, crop_and_resize, scale_and_pad
 
 app = Flask(__name__)
 OUTPUT_DIR = "output"
@@ -51,7 +51,7 @@ def generate_banner_task(job_id, url):
             return
             
 
-        from image_processor import generate_integrated_image, crop_and_resize, pad_and_upload_watch_image
+        from services.image_processor import generate_integrated_image, crop_and_resize, pad_and_upload_watch_image
 
         emit("compositing", "Pre-processing watch image for Ultra-Wide generation layout...")
         padded_watch_url = pad_and_upload_watch_image(sourced_image_path)
@@ -77,7 +77,7 @@ def generate_banner_task(job_id, url):
 
             emit("processing", f"Formatting image for blog layout (Take {attempt})...")
             
-            from llm import get_smart_crop_center
+            from services.llm import get_smart_crop_center
             emit("processing", "Gemini Flash is locating watch coordinates for perfect mobile crop...")
             focus_x_pct, focus_y_pct = get_smart_crop_center(generated_img)
             

@@ -32,7 +32,7 @@ def _build_img2img_wrapper(azaan_prompt, concept=None):
         f"Composition Specs:\n"
         f"- 16:9 wide banner background aspect ratio.\n"
         f"- Headline Safe Zone = 40% clean space/gradient on the {safe_zone} side. Keep this area free of distracting details.\n"
-        f"- Watch placed prominently but very small in the frame vertically.\n\n"
+        f"- Watch placed as a small centerpiece, very small in the frame vertically to ensure it fits wide banners.\n\n"
         f"ABSOLUTE NEGATIVE (CRITICAL):\n"
         f"NO TEXT, NO LETTERS, NO NUMBERS, NO LOGOS, NO WATERMARKS anywhere in the generated image.\n"
         f"Do not alter the branding or text on the watch dial itself, preserve it exactly as in the reference image.\n"
@@ -47,8 +47,8 @@ def pad_and_upload_watch_image(source_image_path, target_width=2560, target_heig
         print(f"Padding watch image {source_image_path} for ultra-wide generation...")
         watch_img = Image.open(source_image_path).convert("RGBA")
         
-        # We want the watch photo to be at most 25% of the total height to survive the 4:1 crop
-        max_watch_height = int(target_height * 0.25)
+        # We want the watch photo to be at most 20% of the total height to survive the 4:1 crop
+        max_watch_height = int(target_height * 0.20)
         scale_factor = max_watch_height / watch_img.height
         new_w = int(watch_img.width * scale_factor)
         
@@ -294,7 +294,12 @@ def generate_img2img_nano_banana(prompt, source_image_url, output_path, concept=
         return None
 
 # Models to try for Gemini image generation (primary → fallback)
-GEMINI_IMAGE_MODELS = ['gemini-2.5-flash-image']
+GEMINI_IMAGE_MODELS = [
+    'gemini-2.5-flash-image', # Original primary (rate limited)
+    'gemini-2.0-flash-exp-image-audio-preview-12-2025', # Found in models list
+    'gemini-2.0-flash-001',   # Stable 2.0
+    'gemini-2.0-flash',       # Standard 2.0
+]
 
 def generate_img2img_gemini(prompt, source_image_path, output_path, concept=None):
     """
@@ -316,7 +321,10 @@ def generate_img2img_gemini(prompt, source_image_path, output_path, concept=None
             image_b64 = base64.b64encode(f.read()).decode("utf-8")
         
         for model_name in GEMINI_IMAGE_MODELS:
-            url = f"https://generativelanguage.googleapis.com/v1beta/models/{model_name}:generateContent?key={api_key}"
+            # Native multimodal generation is currently ONLY in v1beta
+            api_version = "v1beta"
+            
+            url = f"https://generativelanguage.googleapis.com/{api_version}/models/{model_name}:generateContent?key={api_key}"
             
             payload = {
                 "contents": [{
@@ -331,18 +339,18 @@ def generate_img2img_gemini(prompt, source_image_path, output_path, concept=None
                     ]
                 }],
                 "generationConfig": {
-                    "responseModalities": ["TEXT", "IMAGE"],
+                    "responseModalities": ["TEXT", "IMAGE"], # TEXT + IMAGE is safer for some models
                     "imageConfig": {
-                        "aspectRatio": "16:9",
-                        "imageSize": "2K"
+                        "aspectRatio": "16:9", # Some models take "16:9", others "ASPECT_RATIO_16_9"
+                        "imageSize": "LARGE"   # "2K" is sometimes not recognized, "LARGE" is more common
                     }
                 }
             }
             
             for attempt in range(2):
                 try:
-                    print(f"Generating image with Gemini REST API ({model_name}, attempt {attempt+1}/2)...")
-                    with httpx.Client(timeout=60.0) as client:
+                    print(f"Generating image with Gemini REST API ({model_name}, attempt {attempt+1}/2 via {api_version})...")
+                    with httpx.Client(timeout=90.0) as client:
                         response = client.post(url, json=payload)
                         
                         if response.status_code == 200:
@@ -359,12 +367,15 @@ def generate_img2img_gemini(prompt, source_image_path, output_path, concept=None
                                         img.save(output_path, quality=95)
                                         print(f"Gemini image saved to {output_path} via {model_name}")
                                         return output_path
+                        elif response.status_code == 429:
+                            print(f"RATE LIMIT: {model_name} quota exhausted. Waiting 15s...")
+                            _time.sleep(15)
                         else:
-                            print(f"{model_name} error: {response.text[:200]}")
+                            print(f"{model_name} error: {response.text[:1000]}")
                 except Exception as e:
                     print(f"Gemini {model_name} attempt {attempt+1} failed: {e}")
                     if attempt < 1:
-                        _time.sleep(3)
+                        _time.sleep(5)
         
         print("All Gemini image generation attempts exhausted.")
         return None
