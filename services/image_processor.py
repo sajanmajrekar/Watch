@@ -470,37 +470,61 @@ def crop_and_resize(image_path, target_width, target_height, output_path, focus_
         target_aspect = target_width / target_height
         image_aspect = image.width / image.height
 
+        # Prevent the watch from being cut off by ensuring the focus point is not too close to the crop edges.
+        # If the focus point is near the edge, shift the crop to give it some breathing room.
+        min_focus_margin = 0.25  # 25% of crop width/height on each side (reduces chance of watch being cropped)
+
         if image_aspect > target_aspect:
             # Image is wider than target.
             new_width = int(target_aspect * image.height)
-            
+
             focus_point_x = int(image.width * focus_x_pct)
             left = focus_point_x - (new_width // 2)
             right = left + new_width
-            
+
+            # Shift crop so the focus point isn't too close to the left/right edges.
+            min_left = focus_point_x - int(new_width * (1 - min_focus_margin))
+            max_left = focus_point_x - int(new_width * min_focus_margin)
+            if left < min_left:
+                left = min_left
+                right = left + new_width
+            if left > max_left:
+                left = max_left
+                right = left + new_width
+
             if right > image.width:
                 right = image.width
                 left = image.width - new_width
             if left < 0:
                 left = 0
                 right = new_width
-                
+
             crop_box = (left, 0, right, image.height)
         else:
             # Image is taller than target
             new_height = int(image.width / target_aspect)
-            
+
             focus_point_y = int(image.height * focus_y_pct)
             top = focus_point_y - (new_height // 2)
             bottom = top + new_height
-            
+
+            # Shift crop so the focus point isn't too close to the top/bottom edges.
+            min_top = focus_point_y - int(new_height * (1 - min_focus_margin))
+            max_top = focus_point_y - int(new_height * min_focus_margin)
+            if top < min_top:
+                top = min_top
+                bottom = top + new_height
+            if top > max_top:
+                top = max_top
+                bottom = top + new_height
+
             if bottom > image.height:
                 bottom = image.height
                 top = image.height - new_height
             if top < 0:
                 top = 0
                 bottom = new_height
-                
+
             crop_box = (0, top, image.width, bottom)
 
         cropped_image = image.crop(crop_box)
