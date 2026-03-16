@@ -14,86 +14,78 @@ from google.genai import types
 def _build_img2img_wrapper(azaan_prompt, concept=None):
     """
     Wraps the Azaan concept with the Image-to-Image execution instructions.
+    CRITICAL: Watch MUST be preserved EXACTLY with all text/logos/details intact.
     """
     safe_zone = (concept or {}).get('safe_zone_side', 'LEFT')
     
     return (
-        f"CRITICAL WATCH VISIBILITY RULES:\n"
-        f"- THE ENTIRE WATCH MUST BE 100% VISIBLE FROM TOP TO BOTTOM — DO NOT CROP OR CUT ANY PART OF THE WATCH.\n"
-        f"- PRESERVE EVERY DETAIL ON THE WATCH DIAL EXACTLY — logos, text, hands, indices, subdials. The dial must be pixel-perfect.\n"
-        f"- The watch must ONLY occupy 25-30% of the vertical height of the image.\n"
-        f"- Leave massive empty space above the watch (at least 35% height) and below the watch (at least 35% height).\n\n"
-        f"Cinematic macro photography of this EXACT watch. "
+        f"ABSOLUTE WATCH PRESERVATION RULES (NON-NEGOTIABLE - CRITICAL):\n"
+        f"- COPY the watch from the reference image EXACTLY as-is into the new environment.\n"
+        f"- PRESERVE ALL TEXT, LOGOS, LETTERING, AND MARKINGS on the watch dial.\n"
+        f"- Every detail must be pixel-perfect: logos, brand names, model numbers, indices, hands, subdials.\n"
+        f"- DO NOT modify, recolor, reshape, blur, or alter the watch in any way.\n"
+        f"- DO NOT regenerate or interpret watch text — copy it exactly as shown in reference.\n"
+        f"- The watch finish, color, metal tone — ALL must remain IDENTICAL to the reference.\n"
+        f"- PLACE THE WATCH AT THE EXACT CENTER OF THE IMAGE (horizontally 50%, vertically 50%).\n"
+        f"- Watch size: VERY SMALL — 8-10% of image height. Preserve exact proportions and detail clarity.\n"
+        f"- Keep 45%+ empty space ABOVE the watch, 45%+ empty space BELOW the watch.\n"
+        f"- The watch MUST NOT touch frame edges. Do NOT crop. Do NOT blur. Do NOT modify.\n\n"
+        f"Scene Description (environment AROUND the unchanged watch):\n"
         f"{azaan_prompt}\n\n"
-        f"Environment Integration:\n"
-        f"- The watch in the reference image MUST be placed physically into the scene described above.\n"
-        f"- Generate realistic contact shadows beneath the watch based on the lighting direction.\n"
-        f"- Ensure the watch's metal and glass realistically reflect the colors and lights of the new environment.\n\n"
-        f"Composition Specs:\n"
-        f"- 16:9 wide banner background aspect ratio.\n"
-        f"- Headline Safe Zone = 40% clean space/gradient on the {safe_zone} side. Keep this area free of distracting details.\n"
-        f"- Watch placed as a small centerpiece, very small in the frame vertically to ensure it fits wide banners.\n\n"
-        f"ABSOLUTE NEGATIVE (CRITICAL):\n"
-        f"NO TEXT, NO LETTERS, NO NUMBERS, NO LOGOS, NO WATERMARKS anywhere in the generated image.\n"
-        f"Do not alter the branding or text on the watch dial itself, preserve it exactly as in the reference image.\n"
+        f"Image Integration Rules (CRITICAL):\n"
+        f"- The watch sits EXACTLY as shown in the reference — no artistic reinterpretation.\n"
+        f"- Generate realistic lighting and shadows AROUND the watch (not on it unless in reference).\n"
+        f"- Metal/glass reflection: preserve from reference image.\n"
+        f"- Environment fills the space around the unchanged watch.\n"
+        f"- IF YOU CANNOT PRESERVE WATCH DETAILS, DO NOT MODIFY THEM — keep reference exactly.\n\n"
+        f"Technical Specs:\n"
+        f"- Output: 16:9 aspect ratio\n"
+        f"- Watch center: horizontally 50%, vertically 50%\n"
+        f"- {safe_zone} side: 40% clean space for overlays\n"
+        f"- Right side: environmental detail\n\n"
+        f"FORBIDDEN (ABSOLUTE - REPEAT):\n"
+        f"- NEVER modify watch text, logos, or dial markings in any way.\n"
+        f"- NO TEXT REGENERATION or artistic interpretation of watch branding.\n"
+        f"- NO recoloring, NO texture changes, NO detail generation on the watch itself.\n"
+        f"- NO TEXT, NO WATERMARKS in the generated environment (only original watch text).\n"
+        f"- Do NOT interpret 'integrate' as 'modify' — copy the watch as a perfect cutout into new scene.\n"
+        f"- If uncertain, preserve the watch exactly and only change the background/environment.\n"
     )
 
 def pad_and_upload_watch_image(source_image_path, target_width=2560, target_height=1440):
     """
-    Takes the tightly-cropped watch image, shrinks it to 25% height, places it on a
-    16:9 dark canvas with a radial blend to hide white backgrounds, and uploads it.
+    Takes the watch image, scales it to 8% height, places it PERFECTLY CENTERED on a dark canvas.
+    PRESERVES THE WATCH EXACTLY AS-IS - no blending, no modification, no radial masks.
     """
     try:
-        print(f"Padding watch image {source_image_path} for ultra-wide generation...")
+        print(f"Padding watch image {source_image_path} for ultra-wide generation (PRESERVE EXACT)...")
         watch_img = Image.open(source_image_path).convert("RGBA")
         
-        # We want the watch photo to be at most 20% of the total height to survive the 4:1 crop
-        max_watch_height = int(target_height * 0.20)
+        # Make watch VERY SMALL: 8% of total height
+        # This leaves ~46% space above and ~46% below
+        max_watch_height = int(target_height * 0.08)
         scale_factor = max_watch_height / watch_img.height
         new_w = int(watch_img.width * scale_factor)
         
+        # Resize with high quality (LANCZOS)
         watch_resized = watch_img.resize((new_w, max_watch_height), Image.Resampling.LANCZOS)
+        print(f"  Watch resized to: {new_w}x{max_watch_height}px (EXACT scaling, no modification)")
         
-        # Calculate bounding box of non-white pixels roughly (if it has a solid white BG)
-        # To avoid jarring white squares on the dark canvas, we can create a radial gradient mask
-        # over the resized watch image to blend its edges into transparent.
-        import numpy as np
-        
-        # Create radial alpha mask for blending
-        w, h = new_w, max_watch_height
-        y, x = np.ogrid[:h, :w]
-        center_x, center_y = w / 2, h / 2
-        # Max radius that fits within the image bounds, slightly padded
-        max_radius = min(center_x, center_y) * 1.2
-        
-        dist_from_center = np.sqrt((x - center_x)**2 + (y - center_y)**2)
-        
-        # Create a smooth alpha falloff
-        alpha_mask = np.clip((max_radius - dist_from_center) / (max_radius * 0.3), 0, 1) * 255
-        
-        # Apply the mask to the watch image if it doesn't already have transparency
-        # First check if the image has a transparent background (e.g., cutout)
-        extrema = watch_resized.getextrema()
-        if len(extrema) == 4 and extrema[3][0] < 255:
-            # It already has transparency, so we don't need the radial mask
-            pass 
-        else:
-            # Replace the alpha channel with our radial mask to soften edges
-            mask_img = Image.fromarray(alpha_mask.astype(np.uint8), mode='L')
-            watch_resized.putalpha(mask_img)
-
-        # Create a dark 16:9 canvas (hex #1a1a1a) to blend with luxury prompts
+        # Create a dark 16:9 canvas
         canvas = Image.new("RGBA", (target_width, target_height), color="#1a1a1a")
         
-        # Paste the watch in the center
+        # Paste the watch in the EXACT CENTER - no masking, no blending
         paste_x = (target_width - new_w) // 2
         paste_y = (target_height - max_watch_height) // 2
+        print(f"  Pasting watch at center: ({paste_x}, {paste_y})")
+        
+        # Paste with the watch's original alpha channel (no radial mask)
         canvas.paste(watch_resized, (paste_x, paste_y), watch_resized)
         
-        # Convert to RGB to save as JPG
+        # Convert to RGB to save as JPG with maximum quality
         final_canvas = canvas.convert("RGB")
         padded_path = source_image_path.replace(".jpg", "_padded.jpg")
-        final_canvas.save(padded_path, quality=95)
+        final_canvas.save(padded_path, quality=98)
         
         print(f"Uploading padded image to Catbox.moe...")
         command = [
@@ -144,7 +136,7 @@ def generate_img2img_flux2(prompt, source_image_url, output_path, concept=None):
                 "aspect_ratio": "16:9",
                 "resolution": "2K",
                 "image_prompt_weight": 0.99,
-                "strength": 0.35
+                "strength": 0.15
             }
         }
         
@@ -193,7 +185,7 @@ def generate_img2img_flux2(prompt, source_image_url, output_path, concept=None):
                             img_resp = client.get(image_urls[0], timeout=30.0)
                             if img_resp.status_code == 200:
                                 img = Image.open(io.BytesIO(img_resp.content))
-                                img.save(output_path)
+                                img.save(output_path, quality=98)
                                 return output_path
                     return None
                 elif state == "failed":
@@ -364,7 +356,7 @@ def generate_img2img_gemini(prompt, source_image_path, output_path, concept=None
                                         img_bytes = base64.b64decode(inline_data.get("data", ""))
                                         img = Image.open(io.BytesIO(img_bytes))
                                         img = img.convert("RGB")
-                                        img.save(output_path, quality=95)
+                                        img.save(output_path, quality=98)
                                         print(f"Gemini image saved to {output_path} via {model_name}")
                                         return output_path
                         elif response.status_code == 429:
@@ -416,18 +408,21 @@ def generate_integrated_image(prompt, source_image_url, output_path="generated_b
 
 def scale_and_pad(image_path, target_width, target_height, output_path, focus_x_pct=0.5, focus_y_pct=0.5):
     """
-    For ultra-wide banners (like 4:1): Because we perfectly sized the watch to be <=25%
-    of the 16:9 canvas height BEFORE generating, it easily survives a massive vertical crop!
-    Therefore, we NEVER need to pad it with blurred blocks. We just zoom the generated
-    image to fill the entire target width, and crop off the top and bottom. 
+    For ultra-wide banners (like 4:1): FORCE VERTICAL CENTER for watch-centric images.
+    Watch should always be at 50% vertical (centered) to prevent cutting.
     """
     try:
         from PIL import ImageFilter
         import numpy as np
         
-        # We simply pass it through the normal crop_and_resize algorithm.
-        # This will scale width to match the 4:1 aspect width, and vertically crop the center,
-        # perfectly framing our miniature watch without ANY synthetic padding!
+        # CRITICAL FIX: For watch banners, ALWAYS use 50% vertical center
+        # This prevents the watch from being cut off from top/bottom
+        # The watch is placed at 50% vertical in the input image, so keep it there
+        focus_y_pct = 0.5
+        
+        print(f"  Scaling to {target_width}x{target_height} (forcing vertical center at {focus_y_pct*100}% for watch)")
+        
+        # Now use the normal crop_and_resize with the forced center point
         return crop_and_resize(image_path, target_width, target_height, output_path, focus_x_pct, focus_y_pct)
 
     except Exception as e:
@@ -510,7 +505,7 @@ def crop_and_resize(image_path, target_width, target_height, output_path, focus_
 
         cropped_image = image.crop(crop_box)
         final_image = cropped_image.resize((target_width, target_height), Image.Resampling.LANCZOS)
-        final_image.save(output_path, quality=95)
+        final_image.save(output_path, quality=98)
         return output_path
     except Exception as e:
         print(f"Error cropping: {e}")
