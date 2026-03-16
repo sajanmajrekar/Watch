@@ -216,6 +216,5 @@ if __name__ == "__main__":
     if not gemini_key:
         print("⚠️  No GEMINI_API_KEY — the pipeline will NOT work.")
         print("   Paste your key into .env and restart.\n")
-    if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))
     app.run(host="0.0.0.0", port=port)
