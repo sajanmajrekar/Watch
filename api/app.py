@@ -1,5 +1,5 @@
 def handler(request):
     return {
         "statusCode": 200,
-        "body": "WatchBanner API running on Vercel"
+        "body": "WatchBanner API is working"
     }
