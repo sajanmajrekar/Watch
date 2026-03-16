@@ -13,7 +13,7 @@ from services.image_search import search_and_download_watch_image
 from services.image_processor import generate_integrated_image, crop_and_resize, scale_and_pad
 
 app = Flask(__name__)
-OUTPUT_DIR = "output"
+OUTPUT_DIR = "/tmp/output"
 os.makedirs(OUTPUT_DIR, exist_ok=True)
 
 # Global dictionary to hold job status and message queues
