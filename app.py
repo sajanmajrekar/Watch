@@ -19,6 +19,20 @@ os.makedirs(OUTPUT_DIR, exist_ok=True)
 # Global dictionary to hold job status and message queues
 jobs = {}
 
+# In Vercel, serverless functions have short lifetimes and cannot hold
+# long-running background threads or in-memory job state.
+# For safety, we avoid running the generation pipeline in Vercel.
+def running_on_vercel():
+    return os.getenv("VERCEL") == "1"
+
+@app.errorhandler(Exception)
+def handle_exceptions(e):
+    import traceback
+    tb = traceback.format_exc()
+    print("--- Exception caught in Flask ---")
+    print(tb)
+    return jsonify({"error": "Internal Server Error", "details": str(e)}), 500
+
 def generate_banner_task(job_id, url):
     q = jobs[job_id]['queue']
     
@@ -146,6 +160,12 @@ def index():
 
 @app.route("/generate", methods=["POST"])
 def generate():
+    if running_on_vercel():
+        return jsonify({
+            "error": "Generation is not supported in Vercel serverless functions.",
+            "details": "This endpoint requires background processing and file writes, which are not supported in the Vercel serverless environment. Run locally instead."
+        }), 501
+
     data = request.json
     url = data.get("url")
     if not url:
@@ -161,6 +181,12 @@ def generate():
 
 @app.route("/stream/<job_id>")
 def stream(job_id):
+    if running_on_vercel():
+        return jsonify({
+            "error": "Streaming not supported in serverless deployment.",
+            "details": "Use the local server to stream progress updates." 
+        }), 501
+
     if job_id not in jobs:
         return jsonify({"error": "Job not found"}), 404
         
