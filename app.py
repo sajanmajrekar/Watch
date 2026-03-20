@@ -79,8 +79,7 @@ def generate_banner_task(job_id, url):
         emit("compositing", "Pre-processing watch image for Ultra-Wide generation layout...")
         padded_watch_url = pad_and_upload_watch_image(sourced_image_path)
         if not padded_watch_url:
-            emit("error", "Failed to upload padded watch image to public host.")
-            return
+            emit("compositing", "Public upload failed. Falling back to local Gemini generation only.")
 
         # ─── QC RETRY LOOP (up to 3 attempts) ─────────────────────────────
         MAX_ATTEMPTS = 3

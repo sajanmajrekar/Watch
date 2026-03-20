@@ -7,7 +7,6 @@ import httpx
 from dotenv import load_dotenv
 load_dotenv()
 from PIL import Image
-import subprocess
 from google import genai
 from google.genai import types
 
@@ -87,21 +86,23 @@ def pad_and_upload_watch_image(source_image_path, target_width=2560, target_heig
         padded_path = source_image_path.replace(".jpg", "_padded.jpg")
         final_canvas.save(padded_path, quality=98)
         
-        print(f"Uploading padded image to Catbox.moe...")
-        command = [
-            "curl", "-s", "--max-time", "30",
-            "-F", "reqtype=fileupload",
-            "-F", f"fileToUpload=@{padded_path}",
-            "https://catbox.moe/user/api.php"
-        ]
-        result = subprocess.run(command, capture_output=True, text=True, timeout=45)
-        catbox_url = result.stdout.strip()
-        
+        print("Uploading padded image to Catbox.moe...")
+        with open(padded_path, "rb") as image_file:
+            response = httpx.post(
+                "https://catbox.moe/user/api.php",
+                data={"reqtype": "fileupload"},
+                files={"fileToUpload": (os.path.basename(padded_path), image_file, "image/jpeg")},
+                timeout=45.0,
+                follow_redirects=True,
+            )
+
+        catbox_url = response.text.strip()
+
         if catbox_url.startswith("http"):
             print(f"Successfully uploaded padding reference: {catbox_url}")
             return catbox_url
         else:
-            print(f"Catbox returned invalid response: '{catbox_url[:100]}'. Skipping KIE engines.")
+            print(f"Catbox upload failed with status {response.status_code}: '{catbox_url[:200]}'")
             return None
     except Exception as e:
         print(f"Error padding and uploading watch image: {e}")
