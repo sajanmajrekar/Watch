@@ -52,8 +52,17 @@ def generate_banner_task(job_id, url):
             emit("error", "AI failed to extract watch info.")
             return
 
+        if watch_info.get("error"):
+            details = watch_info.get("details")
+            emit("error", f"{watch_info.get('error')}. {details}" if details else watch_info.get("error"))
+            return
+
         emit("sourcing", f"Sourcing image for {watch_info.get('selected_watch')}...")
-        sourced_image_path, sourced_image_url = search_and_download_watch_image(watch_info.get('search_query'), output_filename=os.path.join(OUTPUT_DIR, f"{job_id}_source.jpg"))
+        sourced_image_path, sourced_image_url = search_and_download_watch_image(
+            watch_info.get('search_query'),
+            output_filename=os.path.join(OUTPUT_DIR, f"{job_id}_source.jpg"),
+            source_page_url=url,
+        )
         if not sourced_image_path or not sourced_image_url:
             emit("error", "Failed to source watch image.")
             return
@@ -78,6 +87,7 @@ def generate_banner_task(job_id, url):
         best_score = 0
         best_attempt = None
         current_prompt = concept.get('ai_prompt')
+        attempt_failures = []
         
         for attempt in range(1, MAX_ATTEMPTS + 1):
             emit("processing", f"Image-to-Image Engine: Generating integrated environment (Take {attempt}/{MAX_ATTEMPTS})...")
@@ -86,6 +96,7 @@ def generate_banner_task(job_id, url):
             generated_img = generate_integrated_image(current_prompt, padded_watch_url, output_path=raw_generated_path, concept=concept, local_source_path=sourced_image_path)
             
             if not generated_img:
+                attempt_failures.append(f"Take {attempt}: image generation failed")
                 emit("processing", f"Take {attempt} failed to generate. Retrying...")
                 continue
 
@@ -99,19 +110,33 @@ def generate_banner_task(job_id, url):
             s2 = crop_and_resize(generated_img, 600, 548, os.path.join(OUTPUT_DIR, f"{job_id}_600x548_t{attempt}.jpg"), focus_x_pct=focus_x_pct, focus_y_pct=focus_y_pct)
             
             if not s1 or not s2:
+                attempt_failures.append(f"Take {attempt}: post-processing/cropping failed")
                 continue
+
+            if not best_attempt:
+                best_attempt = {
+                    "s1": s1, "s2": s2,
+                    "score": 0, "feedback": "Generated successfully, but AI review was unavailable."
+                }
 
             emit("reviewing", f"Azaan Kale is QC'ing Take {attempt}...")
             review = art_director_review(s1, concept)
             
             if not review:
+                attempt_failures.append(f"Take {attempt}: art director review returned no result")
+                emit("reviewing", f"Take {attempt}: review unavailable. Keeping generated image as fallback.")
+                continue
+
+            if review.get("error"):
+                attempt_failures.append(f"Take {attempt}: {review.get('error')} - {review.get('details', 'no details')}")
+                emit("reviewing", f"Take {attempt}: review failed. Keeping generated image as fallback.")
                 continue
             
             score = review.get('review_score', 0)
             feedback = review.get('feedback', '')
             emit("reviewing", f"Take {attempt}: Azaan scored it {score}/10 — \"{feedback[:80]}...\"")
             
-            if score > best_score:
+            if score >= best_score:
                 best_score = score
                 best_attempt = {
                     "s1": s1, "s2": s2,
@@ -126,7 +151,8 @@ def generate_banner_task(job_id, url):
             current_prompt = review.get('corrected_prompt', concept.get('ai_prompt') + f". Fix: {feedback}")
         
         if not best_attempt:
-            emit("error", "All takes failed to produce a usable image.")
+            details = " | ".join(attempt_failures[-3:]) if attempt_failures else "Unknown failure"
+            emit("error", f"All takes failed to produce a usable image. {details}")
             return
         
         # Copy best attempt files to final names

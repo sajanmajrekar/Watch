@@ -412,9 +412,6 @@ def scale_and_pad(image_path, target_width, target_height, output_path, focus_x_
     Watch should always be at 50% vertical (centered) to prevent cutting.
     """
     try:
-        from PIL import ImageFilter
-        import numpy as np
-        
         # CRITICAL FIX: For watch banners, ALWAYS use 50% vertical center
         # This prevents the watch from being cut off from top/bottom
         # The watch is placed at 50% vertical in the input image, so keep it there

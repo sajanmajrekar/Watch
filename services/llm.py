@@ -43,6 +43,50 @@ def get_client():
         )
     return genai.Client(api_key=api_key)
 
+
+def _is_quota_error(exc):
+    message = str(exc).upper()
+    quota_signals = [
+        "RESOURCE_EXHAUSTED",
+        "429",
+        "QUOTA",
+        "RATE LIMIT",
+        "BILLING",
+    ]
+    return any(signal in message for signal in quota_signals)
+
+
+def _generate_json_with_model_fallback(client, prompt, schema, models_to_try, temperature=0.7):
+    last_error = None
+
+    for model_name in models_to_try:
+        for attempt in range(2):
+            try:
+                print(f"Trying {model_name} (attempt {attempt+1}/2)...")
+                response = client.models.generate_content(
+                    model=model_name,
+                    contents=prompt,
+                    config=types.GenerateContentConfig(
+                        response_mime_type="application/json",
+                        response_schema=schema,
+                        temperature=temperature,
+                    ),
+                )
+                return {"ok": True, "data": json.loads(response.text)}
+            except Exception as e:
+                last_error = e
+                print(f"{model_name} attempt {attempt+1} failed: {e}")
+
+                # A quota-exhausted model usually won't recover within seconds.
+                # Skip to the next model instead of retrying the same one.
+                if _is_quota_error(e):
+                    break
+
+                if attempt < 1:
+                    time.sleep(2)
+
+    return {"ok": False, "error": str(last_error) if last_error else "Unknown LLM error"}
+
 # ─── LAYER 1 — AZAAN KALE PERSONA (IMAGE-TO-IMAGE) ─────────────────────────
 
 AZAAN_KALE_PERSONA = """
@@ -84,23 +128,36 @@ def extract_watch_info(blog_text):
         "Blog text:\n" + blog_text[:15000]
     )
 
-    for attempt in range(3):
-        try:
-            response = client.models.generate_content(
-                model='gemini-2.5-pro',
-                contents=prompt,
-                config=types.GenerateContentConfig(
-                    response_mime_type="application/json",
-                    response_schema=WatchInfoPayload,
-                    temperature=0.7,
-                ),
-            )
-            return json.loads(response.text)
-        except Exception as e:
-            print(f"AI extraction attempt {attempt+1}/3 failed: {e}")
-            if attempt < 2:
-                time.sleep((attempt + 1) * 2)
-    return None
+    models_to_try = [
+        "gemini-2.5-flash",
+        "gemini-2.0-flash",
+        "gemini-2.5-pro",
+    ]
+    result = _generate_json_with_model_fallback(
+        client=client,
+        prompt=prompt,
+        schema=WatchInfoPayload,
+        models_to_try=models_to_try,
+        temperature=0.7,
+    )
+
+    if result["ok"]:
+        return result["data"]
+
+    error_message = result["error"]
+    if _is_quota_error(error_message):
+        return {
+            "error": "Gemini quota exceeded",
+            "details": (
+                "The Gemini API rejected the extraction request because the current "
+                "API key has no remaining quota or billing is not enabled."
+            ),
+        }
+
+    return {
+        "error": "Watch extraction failed",
+        "details": error_message,
+    }
 
 
 def art_director_concept(watch_image_path, watch_info):
@@ -201,8 +258,8 @@ Look at the image. Did the AI execute your vision?
 2. If score < 9, output a corrected prompt that fixes the top issues (e.g. "make the lighting match the watch better", "fix the chaotic background").
 """
 
-        # Try gemini-2.5-pro first, fallback to gemini-2.5-flash
-        models_to_try = ['gemini-2.5-pro', 'gemini-2.5-flash']
+        # Prefer cheaper/faster models first to reduce quota pressure.
+        models_to_try = ['gemini-2.5-flash', 'gemini-2.0-flash', 'gemini-2.5-pro']
         
         for model_name in models_to_try:
             for attempt in range(2):
@@ -226,10 +283,16 @@ Look at the image. Did the AI execute your vision?
                         time.sleep(3)
         
         print("All review attempts exhausted.")
-        return None
+        return {
+            "error": "Art director review failed",
+            "details": "All Gemini review model attempts failed.",
+        }
     except Exception as e:
         print(f"Error during Art Director review: {e}")
-        return None
+        return {
+            "error": "Art director review failed",
+            "details": str(e),
+        }
 
 def get_smart_crop_center(image_path):
     print("Gemini Flash — visually analyzing output for perfect mobile cropping coordinates...")
